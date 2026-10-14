@@ -24,17 +24,29 @@ singularity_helper() {
     fi
 }
 
-export LD_LIBRARY_PATH="$LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-export PATH="$BIN:$PATH"
+path_prepend() {
+    eval "_cur=\${$1:-}"
+    case ":$_cur:" in
+        *":$2:"*) ;;
+        *) eval "export $1=\"\$2\${_cur:+:\$_cur}\"" ;;
+    esac
+}
+
+path_prepend LD_LIBRARY_PATH "$LIB"
+path_prepend PATH "$BIN"
 export GDK_BACKEND=wayland
 export GSK_RENDERER="${GSK_RENDERER:-gl}"
 export GTK_USE_PORTAL=1
 export QT_QPA_PLATFORMTHEME=xdgdesktopportal
 export XDG_CURRENT_DESKTOP=Singularity
-export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:$SHARE:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
-export XDG_CONFIG_DIRS="$PREFIX/etc/xdg:${XDG_CONFIG_DIRS:-/etc/xdg}"
+export XDG_DATA_DIRS="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+path_prepend XDG_DATA_DIRS "$SHARE"
+path_prepend XDG_DATA_DIRS /var/lib/flatpak/exports/share
+path_prepend XDG_DATA_DIRS "$HOME/.local/share/flatpak/exports/share"
+export XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/etc/xdg}"
+path_prepend XDG_CONFIG_DIRS "$PREFIX/etc/xdg"
 export GSETTINGS_SCHEMA_DIR="$SHARE/glib-2.0/schemas"
-export GI_TYPELIB_PATH="$LIB/girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
+path_prepend GI_TYPELIB_PATH "$LIB/girepository-1.0"
 if command -v gsettings >/dev/null 2>&1 &&
     [ "$(gsettings get dev.sinty.desktop global-menu-enabled 2>/dev/null)" = "true" ]; then
     export QT_QPA_PLATFORM=xcb
