@@ -54,6 +54,22 @@ else
     export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland}"
 fi
 
+# Locale: hosts without systemd-localed (Void/runit) store the Region
+# settings in /etc/locale.conf and ~/.config/locale.conf. Apply them here;
+# the Settings app writes the per-user file and the note says "next login".
+for _locale_file in /etc/locale.conf "${XDG_CONFIG_HOME:-$HOME/.config}/locale.conf"; do
+    [ -r "$_locale_file" ] || continue
+    while IFS='=' read -r _lc_key _lc_value; do
+        case "$_lc_key" in
+            LANG|LANGUAGE|LC_*) ;;
+            *) continue ;;
+        esac
+        _lc_value="${_lc_value%\"}"
+        _lc_value="${_lc_value#\"}"
+        [ -n "$_lc_value" ] && export "$_lc_key=$_lc_value"
+    done < "$_locale_file"
+done
+
 _STATE="${XDG_STATE_HOME:-$HOME/.local/state}/singularity"
 mkdir -p "$_STATE"
 _LOG="$_STATE/desktop.log"
@@ -143,6 +159,8 @@ dbus-update-activation-environment \
     XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS GDK_BACKEND GSK_RENDERER \
     GTK_USE_PORTAL QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME \
     GSETTINGS_SCHEMA_DIR XDG_DATA_DIRS XDG_CONFIG_DIRS GI_TYPELIB_PATH PATH LD_LIBRARY_PATH \
+    LANG LANGUAGE LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY LC_MESSAGES \
+    LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT LC_IDENTIFICATION \
     2>/dev/null || true
 
 [ -f "$_LOG" ] && mv -f "$_LOG" "$_LOG.1"
