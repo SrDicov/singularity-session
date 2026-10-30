@@ -190,6 +190,24 @@ if [ -x "$BIN/ush-broker" ]; then
     nohup "$BIN/ush-broker" >> "$_STATE/ush-broker.log" 2>&1 &
     record_helper "$!" "$BIN/ush-broker"
 fi
+# Non-systemd hosts (Void/runit) have no user service manager, so the session
+# starts the audio stack itself. systemd hosts keep their user units.
+if [ ! -d /run/systemd/system ]; then
+    _audio_log="$_STATE/audio.log"
+    _runtime="${XDG_RUNTIME_DIR:-/tmp}"
+    if command -v pipewire >/dev/null 2>&1 && [ ! -S "$_runtime/pipewire-0" ]; then
+        nohup pipewire >> "$_audio_log" 2>&1 &
+        record_helper "$!" "$(command -v pipewire)"
+        if command -v wireplumber >/dev/null 2>&1; then
+            nohup wireplumber >> "$_audio_log" 2>&1 &
+            record_helper "$!" "$(command -v wireplumber)"
+        fi
+    fi
+    if command -v pipewire-pulse >/dev/null 2>&1 && [ ! -S "$_runtime/pulse/native" ]; then
+        nohup pipewire-pulse >> "$_audio_log" 2>&1 &
+        record_helper "$!" "$(command -v pipewire-pulse)"
+    fi
+fi
 # graphical-session.target sets RefuseManualStart and can only be reached via
 # a unit that BindsTo= it. Without this start, the target stays inactive and
 # every WantedBy=graphical-session.target unit -- our own
